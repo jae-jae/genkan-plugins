@@ -4,6 +4,8 @@
 
 用于 [Genkan](https://github.com/jae-jae/genkan) 的插件集合。
 
+![Genkan 中的 Codex 用量和比特币价格小组件](docs/images/genkan-widgets.png)
+
 ## 插件
 
 | 插件 | 介绍 |

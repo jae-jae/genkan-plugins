@@ -4,6 +4,8 @@ English | [简体中文](README.zh-CN.md)
 
 A collection of plugins for [Genkan](https://github.com/jae-jae/genkan).
 
+![Codex Usage and Bitcoin Price widgets in Genkan](docs/images/genkan-widgets.png)
+
 ## Plugins
 
 | Plugin | Description |
