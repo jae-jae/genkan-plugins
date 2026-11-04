@@ -1,0 +1,13 @@
+{
+  "name": "genkan-plugins",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugins for the Genkan self-hosted start page",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

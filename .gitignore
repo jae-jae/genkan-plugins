@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+coverage/
+__pycache__/
+*.pyc
+.env
+.env.*
+auth.json
+genkan-backup*.json
