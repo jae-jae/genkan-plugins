@@ -39,6 +39,12 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/bitcoin-pr
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/stock-trend.js
 ```
 
+SSH 服务器的安装地址（需要支持原生 SSH 的 Genkan 版本）：
+
+```text
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
+```
+
 ## Codex 用量设置
 
 - **访问令牌：** 使用 ChatGPT 登录 Codex 后，从 `~/.codex/auth.json → tokens.access_token` 复制字段值。只粘贴值，不要带引号或其他字段，过期后重新填写。这是账户凭据，请妥善保管，仅用于可信的 Genkan 实例。
@@ -63,6 +69,20 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/stock-tren
 
 插件仅请求 `query1.finance.yahoo.com`、`query2.finance.yahoo.com`，不申请书签权限，不嵌入第三方网页。每个小组件缓存一份行情和走势，5 分钟内复用。请求失败时，可显示相同标的和周期的缓存并标注获取时间；此回退没有最大缓存年龄限制。Yahoo Finance 公开行情接口可能变更或限流。
 
+## SSH 服务器设置
+
+需要支持原生 SSH 的 Genkan 版本，旧版本会提示升级。每台 Linux 服务器添加一个小组件，无需安装远端 Agent 或使用 sudo。
+
+- **主机：** 填写 Genkan 服务端可达的主机名或 IP，不含协议和端口；IPv6 地址不加方括号。
+- **端口：** 默认 `22`。
+- **用户：** 填写能读取 `/proc` 和根分区磁盘用量的 SSH 用户。
+- **密码或私钥：** 选择一种认证方式。私钥需粘贴完整的 PEM/OpenSSH 内容，加密私钥另填口令；切换方式时清除原来的凭据。保存后不回显，使用 Genkan 现有存储机制，不额外加密磁盘上的配置。
+- **显示名称：** 选填，留空时使用服务器主机名。
+
+插件申请 SSH 资源采集权限，不申请 HTTP 或书签权限。连接时不确认或校验服务器主机密钥，每次执行固定的只读采集脚本，超时时间为 7 秒。
+
+小组件显示 Linux 的 CPU、内存、根分区用量和网络总速率，不统计容器配额或其他挂载点；网桥和虚拟网卡可能导致网络流量重复计数。页面轮询时采集数据，第二次采样起显示 CPU 趋势，最多保留 30 分钟内的 60 个采样。连接失败时可显示 5 分钟内的缓存并标注采样时间；认证失败时直接显示错误。
+
 ## 添加插件
 
 将 JavaScript 文件放入 `plugins/`，在 `genkan-plugins.json` 中登记，并更新两份 README。开发方式见 [Genkan 插件指南](https://github.com/jae-jae/genkan/blob/main/docs/PLUGIN_DEV.md)。
@@ -72,19 +92,3 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/stock-tren
 ```bash
 npm test
 ```
-
-## SSH 服务器设置
-
-本插件需要包含 `genkan.ssh.stats()` 的 Genkan 主程序，旧版本会提示升级。当前源文件可在「设置 → 插件 → 添加 → 源码」中粘贴安装，**先保持禁用**，配置并测试成功后启用，再添加 `resources` 小组件。也可使用[插件源码地址](https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js)安装；Genkan 主程序必须支持原生 SSH API 才能采集资源信息。
-
-1. **主机、端口、用户：** 填写 Genkan 服务端可达的 SSH 主机（不含协议/端口，IPv6 不加方括号），默认端口 22。使用可读取 `/proc` 的普通用户，无需 sudo。
-2. **认证：** 密码和完整 PEM/OpenSSH 私钥二选一。加密私钥另填口令；切换认证方式时清除原来的凭据。密码、私钥、口令均是 secret 字段，保存后不回显；使用 Genkan 现有凭据存储机制，不额外加密磁盘上的配置。
-3. **每台服务器一个实例：** 可自定义名称。首次采样后显示读数，第二次起显示 CPU 趋势；最近 60 个采样最多覆盖 30 分钟，页面未轮询时不后台采集。
-
-插件仅申请 **SSH 资源采集权限**，可用提供的凭据连接指定 SSH 主机，包括内网；不申请 HTTP/书签权限。浏览器不直接连接 SSH，也不执行插件代码。原生接口只执行固定只读脚本，跳过服务器主机密钥校验，无需确认，每次最多 7 秒。
-
-统计范围：Linux 系统可见资源（不保证为容器 cgroup 配额）；CPU 为约 1 秒采样；内存为 `MemTotal - MemAvailable`；磁盘是根分区 `/`，占用百分比按 `used/(used+available)` 计算；网络为所有非回环接口合计，bridge/veth 可能重复计数。需要 sh、awk、cat、df、uname、tail、sleep 和 `/proc`，不需要安装远端 Agent。不支持 Windows/macOS、网卡选择或其他磁盘挂载点。
-
-连接失败/超时会标黄并显示采样时间，最多回退到 5 分钟内的数据；认证错误不会回退为旧的成功状态。重启或超过 90 秒的采样间隔会重开趋势，避免连出虚假的连续曲线。实例缓存不包含 SSH 凭据；存储空间不足时仍显示实时读数。
-
-加密 OpenSSH 私钥最多支持 64 轮 bcrypt；超出时明确报错，建议使用单独的监控密钥。

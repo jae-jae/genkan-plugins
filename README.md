@@ -39,6 +39,12 @@ Stock Trend installation URL:
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/stock-trend.js
 ```
 
+SSH Server installation URL (requires a Genkan build with native SSH support):
+
+```text
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
+```
+
 ## Codex Usage settings
 
 - **Access token:** After signing in to Codex with ChatGPT, copy the value at `~/.codex/auth.json → tokens.access_token`. Paste only the value, without quotes or other fields. Replace it when it expires. This is an account credential; keep it private and use a trusted Genkan instance.
@@ -63,6 +69,20 @@ The plugin queries only `api.coinpaprika.com` and does not request bookmark perm
 
 The plugin queries only `query1.finance.yahoo.com` and `query2.finance.yahoo.com`, with no bookmark permissions or embedded third-party pages. It caches one quote and chart per widget for 5 minutes. If a request fails, it can show the saved data for the same ticker and period with a cache-time warning; there is no maximum age for this fallback. Yahoo Finance's public chart endpoint may change or rate-limit requests.
 
+## SSH Server settings
+
+Requires a Genkan build with native SSH support; older versions show an upgrade message. Add one widget per Linux server. No remote agent or sudo is needed.
+
+- **Host:** A hostname or IP reachable from the Genkan server, without a scheme or port. Omit brackets for IPv6 addresses.
+- **Port:** Defaults to `22`.
+- **User:** An SSH user that can read `/proc` and the root filesystem's disk usage.
+- **Password or private key:** Supply one authentication method. Paste the complete PEM/OpenSSH private key and provide its passphrase if encrypted. Clear the previous credential when switching methods. Saved credentials are not displayed again; they use Genkan's existing storage without additional encryption at rest.
+- **Display name:** Optional. Leave blank to use the server hostname.
+
+The plugin requests SSH resource-collection permission, with no HTTP or bookmark access. It connects directly without confirming or verifying the server host key. Each collection runs a fixed read-only script with a 7-second timeout.
+
+The widget shows Linux CPU, memory, root filesystem usage and combined network rates. Container quotas and other mount points are not covered; bridge and virtual interfaces may cause network traffic to be counted more than once. CPU history starts with the second sample and keeps up to 60 samples over 30 minutes while the page polls the widget. Connection failures can show saved readings for up to five minutes, marked with their sample time; authentication failures show an error instead.
+
 ## Add a plugin
 
 Add its JavaScript file to `plugins/`, register it in `genkan-plugins.json`, and update both READMEs. See the [Genkan plugin guide](https://github.com/jae-jae/genkan/blob/main/docs/PLUGIN_DEV.md).
@@ -72,19 +92,3 @@ Run tests with Node.js 22 or later:
 ```bash
 npm test
 ```
-
-## SSH Server setup
-
-Requires a Genkan build containing `genkan.ssh.stats()`; older builds show an upgrade message. Paste `plugins/ssh-server.js` into **Settings → Plugins → Add → Source**, keep it disabled, configure/test it, then enable and add the `resources` widget. You can also install it from the [plugin source URL](https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js). The Genkan host must support the native SSH API before the widget can collect metrics.
-
-1. Enter a host reachable from the Genkan server (bare hostname/IP; IPv6 without brackets), port (default 22), and an unprivileged user that can read `/proc`. No sudo is needed.
-2. Supply either a password or a complete PEM/OpenSSH private key, plus its passphrase if encrypted. Clear the old credential when switching methods. All credentials are secret fields and stay blank after saving; they use Genkan's existing credential storage, without additional encryption at rest.
-3. Add one instance per server, optionally with a display name. CPU history appears after the second sample, keeping up to 60 samples / 30 minutes. Sampling occurs while the widget is polled, not in a background job.
-
-Requests **SSH resource-collection permission** only. This permits connections to supplied SSH hosts, including private networks, using supplied credentials; no HTTP or bookmark access is requested. Browsers never connect to SSH or run plugin code. The native API runs a fixed read-only script, skips server host-key verification without confirmation, and limits each call to 7 seconds.
-
-Metrics cover visible Linux system resources, not necessarily container cgroup quotas. CPU uses a roughly one-second sample; memory is `MemTotal - MemAvailable`; disk is the root filesystem `/` with usage `used/(used+available)`; network sums non-loopback interfaces (bridge/veth may double-count). Requires sh, awk, cat, df, uname, tail, sleep and `/proc`; no remote agent. Windows/macOS, interface selection and other mount points are not supported.
-
-Connection/timeout failures show a yellow saved-data state with the sample time, for at most five minutes. Authentication errors never fall back to saved success. Reboots or sampling gaps over 90 seconds start a new history segment. Cache contains no SSH credentials; full storage does not prevent live display.
-
-Encrypted OpenSSH keys support up to 64 bcrypt rounds; higher costs return a clear error. Use a dedicated monitoring key.
