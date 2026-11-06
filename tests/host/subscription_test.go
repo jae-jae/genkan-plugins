@@ -59,12 +59,9 @@ func TestSubscriptionUsageRuntime(t *testing.T) {
 	if _, err = e.m.Install(context.Background(), InstallRequest{Source: source, Enable: &disabled}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = e.m.Patch("subscription-usage", PatchRequest{Config: map[string]any{"origin1": stub.URL}}); err != nil {
-		t.Fatal(err)
-	}
 	url := stub.URL + "/fixture?key=synthetic-private-value"
-	w := addWidget(t, e, "subscription-usage", "usage", map[string]any{"url": url, "zone": "UTC"})
-	other := addWidget(t, e, "subscription-usage", "usage", map[string]any{"url": url, "zone": "UTC"})
+	w := addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": url, "zone": "UTC"})
+	other := addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": url, "zone": "UTC"})
 	ent, _, _ := e.m.entryFor("subscription-usage")
 	clock := time.Date(2026, 10, 1, 1, 0, 0, 0, time.UTC).UnixMilli()
 	setClock := func(n int64) {
@@ -159,4 +156,59 @@ func TestSubscriptionUsageRuntime(t *testing.T) {
 	if v.Error != "" || !strings.Contains(fmt.Sprint(v.Body), "Saved data") {
 		t.Fatalf("stale view: %+v", v)
 	}
+}
+
+func TestSubscriptionUsageRuntimeLarge(t *testing.T) {
+	var requests atomic.Int32
+	stub := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+		w.Header().Set("Subscription-Userinfo", fmt.Sprintf("upload=%d; download=200", id))
+	}))
+	defer stub.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(stub.Certificate())
+	old := http.DefaultTransport
+	transport := old.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
+	http.DefaultTransport = transport
+	defer func() { http.DefaultTransport = old; transport.CloseIdleConnections() }()
+	raw, err := os.ReadFile(os.Getenv("SUBSCRIPTION_PLUGIN_SOURCE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := strings.ReplaceAll(string(raw), "ctx.now", "1790816400000")
+	e := newEnv(t)
+	disabled := false
+	if _, err = e.m.Install(context.Background(), InstallRequest{Source: source, Enable: &disabled}); err != nil {
+		t.Fatal(err)
+	}
+	var last WidgetOut
+	for i := 0; i < 200; i++ {
+		last = addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": fmt.Sprintf("%s/sub?id=%d", stub.URL, i), "zone": "UTC"})
+	}
+	started := time.Now()
+	for i := 0; i < 2; i++ {
+		res, err := e.m.Test(context.Background(), "subscription-usage", TestRequest{Hook: "schedule"})
+		if err != nil || !res.OK {
+			t.Fatalf("schedule: %+v %v", res, err)
+		}
+		result := res.Result.(map[string]any)
+		if fmt.Sprint(result["failed"]) != "0" || fmt.Sprint(result["pending"]) != "0" {
+			t.Fatalf("incomplete batch: %+v", result)
+		}
+	}
+	if requests.Load() != 200 {
+		t.Fatalf("repeated/missing samples: %d", requests.Load())
+	}
+	snapshot, err := e.m.Storage("subscription-usage")
+	if err != nil || snapshot.Size > 224*1024 || len(snapshot.Entries) != 200 {
+		t.Fatalf("budget: %d/%d %v", snapshot.Size, len(snapshot.Entries), err)
+	}
+	ent, _, _ := e.m.entryFor("subscription-usage")
+	b, ok := ent.kv.get("usage:" + last.ID)
+	if !ok || !strings.Contains(string(b), `"u":199`) {
+		t.Fatal("last widget missing/incorrect")
+	}
+	t.Logf("200 instances, two scheduler passes: %s, stored %d bytes", time.Since(started), snapshot.Size)
 }

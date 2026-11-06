@@ -46,7 +46,7 @@ SSH Server installation URL (requires a Genkan build with native SSH support):
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-Subscription Usage installation URL (requires a Genkan build with `verifyTLS` support):
+Subscription Usage installation URL (requires a Genkan build with verified TLS and scheduled widget origin support):
 
 ```text
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
@@ -92,13 +92,15 @@ The widget shows Linux CPU, memory, root filesystem usage and combined network r
 
 ## Subscription Usage settings
 
-Requires a Genkan build with `verifyTLS` support and a subscription service that returns `Subscription-Userinfo`. Supports up to five subscriptions, sampled hourly, with English/Chinese cards and 7/30-day charts.
+Requires Genkan support for verified TLS and scheduled widget origins. The subscription service must return `Subscription-Userinfo`. Each subscription is sampled hourly, with English/Chinese cards and 7/30-day charts. There is no plugin-specific widget count limit.
 
-- **Allowed origin:** In plugin settings, enter the HTTPS scheme, host and optional port only, without a path or token.
-- **Subscription URL:** In each widget, select that origin and paste the full private URL into the secret field. Use the final HTTPS URL; certificates are verified and redirects are refused.
+- **Allowed origin:** In each widget, enter the HTTPS scheme, host and optional port only, without a path or token.
+- **Subscription URL:** Paste the full private URL into the secret field; its origin must match. Use the final HTTPS URL; certificates are verified and redirects are refused.
 - **Chart options:** Choose a display name, 7/30-day range and time zone (default `Asia/Shanghai`). Changing the URL or time zone starts a new history.
 
-Failed updates retain the last reading and mark it stale. Daily increases cover only observed intervals; gaps and counter resets are excluded, so these are not billing totals. History starts after setup, and sampling pauses while Genkan or the plugin is stopped.
+Failed updates retain the last reading and mark it stale. Daily increases cover only observed intervals; gaps and counter resets are excluded, so these are not billing totals. History starts after setup. Host instance, runtime and storage limits still apply: a busy queue delays sampling, and shared storage pressure shortens retained history.
+
+Upgrading from 1.0: note your configured origins before updating, then replace each widget’s old origin number with its HTTPS origin. Keep its subscription URL and time zone unchanged to retain history.
 
 ## Add a plugin
 

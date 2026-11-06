@@ -46,7 +46,7 @@ SSH 服务器的安装地址（需要支持原生 SSH 的 Genkan 版本）：
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-机场订阅用量的安装地址（需要支持 `verifyTLS` 的 Genkan）：
+机场订阅用量的安装地址（需要支持严格 TLS 校验及定时任务访问小组件来源的 Genkan）：
 
 ```text
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
@@ -92,13 +92,15 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscripti
 
 ## 机场订阅用量设置
 
-需要支持 `verifyTLS` 的 Genkan，以及返回 `Subscription-Userinfo` 响应头的订阅服务。最多支持 5 个订阅，每小时采样，提供中英文卡片和 7／30 天图表。
+需要支持严格 TLS 校验及定时任务访问小组件来源的 Genkan，以及返回 `Subscription-Userinfo` 响应头的订阅服务。每个订阅每小时采样，提供中英文卡片和 7／30 天图表，插件不额外限制小组件数量。
 
-- **授权来源：** 在插件设置中填写 HTTPS 协议、主机及可选端口，不含路径或令牌。
-- **订阅地址：** 在小组件中选择对应来源，将完整私密链接填入 secret 字段。请使用最终 HTTPS 地址，插件严格校验证书，不跟随重定向。
+- **授权来源：** 在每个小组件中填写 HTTPS 协议、主机及可选端口，不含路径或令牌。
+- **订阅地址：** 将完整私密链接填入 secret 字段，其来源须与授权来源一致。请使用最终 HTTPS 地址，插件严格校验证书，不跟随重定向。
 - **图表选项：** 可设置显示名、7／30 天范围和时区，默认 `Asia/Shanghai`。修改订阅地址或时区会重新建立历史。
 
-更新失败时保留旧读数并标记。每日增量只统计有效观测区间，排除采样缺口和计数重置，不能作为精确账单。历史从配置后开始记录，Genkan 或插件停止期间不采样。
+更新失败时保留旧读数并标记。每日增量只统计有效观测区间，排除采样缺口和计数重置，不能作为精确账单。历史从配置后开始记录。仍受宿主实例、运行时间和存储限制：队列繁忙时延后采样，共享存储不足时缩短历史保留范围。
+
+从 1.0 升级：更新前记下已配置的来源，更新后将每个小组件的旧来源编号改填为 HTTPS 来源。订阅地址和时区保持不变即可保留历史。
 
 ## 添加插件
 

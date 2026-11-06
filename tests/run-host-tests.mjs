@@ -12,7 +12,7 @@ try {
     writeFileSync(overlay, JSON.stringify({ Replace: {
             [join(host, 'internal/plugin/subscription_external_test.go')]: join(root, 'tests/host/subscription_test.go'),
         } }));
-    const result = spawnSync('go', ['test', '-overlay', overlay, './internal/plugin', '-run', '^TestSubscriptionUsageRuntime$', '-count=1', '-v'], {
+    const result = spawnSync('go', ['test', '-overlay', overlay, './internal/plugin', '-run', '^TestSubscriptionUsageRuntime', '-count=1', '-v'], {
         cwd: host, stdio: 'inherit', env: { ...process.env, SUBSCRIPTION_PLUGIN_SOURCE: join(root, 'plugins/subscription-usage.js') },
     });
     if (result.error)

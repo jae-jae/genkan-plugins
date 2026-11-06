@@ -3,12 +3,12 @@
 export const messages = {
     en: {
         name: "Subscription Usage", description: "Hourly subscription usage snapshots and observed daily changes.",
-        origin1: "Allowed origin 1", origin2: "Allowed origin 2", origin3: "Allowed origin 3", origin4: "Allowed origin 4", origin5: "Allowed origin 5",
-        originHelp: "HTTPS origin only, without credentials, path or query. TLS certificates are verified. Configure in plugin settings.",
+        originHelp: "HTTPS origin only, without credentials, path or query. TLS certificates are verified.",
         slot: "Allowed origin", label: "Display name", url: "Subscription URL", urlHelp: "Full private URL. Stored as a secret; never put it in an origin field.",
         range: "Chart range", r7: "7 days", r30: "30 days", zone: "Time zone", zoneHelp: "Daily totals use this zone. Changing the URL or zone starts a new history.",
-        host: "Update Genkan: this plugin requires verified TLS for configured hosts.", setup: "Set a matching HTTPS origin in plugin settings and the private subscription URL in widget settings.",
-        timezone: "Enter a valid IANA time zone.", limit: "This plugin supports at most five widget instances.", collecting: "Waiting for the next hourly sample. History starts with the first successful sample.",
+        host: "Update Genkan: this plugin requires verified TLS and scheduled widget origins.", setup: "Set a matching HTTPS origin and private subscription URL in this widget’s settings.",
+        migration: "Update this widget’s Allowed origin: replace the old slot number with the HTTPS scheme, host and optional port previously saved in plugin settings. Keep the Subscription URL and time zone unchanged to retain history.",
+        timezone: "Enter a valid IANA time zone.", collecting: "Waiting for a sample. Subscriptions are sampled hourly; busy queues may take longer.",
         network: "Connection, certificate verification or timeout failure.", header: "The service did not provide valid upload and download counters.", http: "The service returned HTTP {status}.", redirect: "Redirect refused. Configure the final HTTPS subscription endpoint instead.", storage: "Could not save the sample within the storage budget.",
         used: "Used", quota: "Allowance", remaining: "Remaining", unlimited: "Unlimited", unknown: "Unknown", expires: "Expires", expired: "Expired", upload: "Upload", download: "Download", over: "Over allowance", updated: "Last success: {time}",
         stale: "Saved data · refresh failed or overdue. {reason}", cumulative: "Reported cumulative usage (GiB)", daily: "Observed daily increase (GiB)",
@@ -20,12 +20,12 @@ export const messages = {
     },
     zh: {
         name: "机场订阅用量", description: "每小时记录订阅用量，展示累计趋势和每日可观测增量。",
-        origin1: "授权来源 1", origin2: "授权来源 2", origin3: "授权来源 3", origin4: "授权来源 4", origin5: "授权来源 5",
-        originHelp: "仅填写 HTTPS origin，不含凭据、路径或查询参数。严格校验证书。在插件设置中配置。",
+        originHelp: "仅填写 HTTPS origin，不含凭据、路径或查询参数。严格校验证书。",
         slot: "授权来源", label: "显示名称", url: "订阅地址", urlHelp: "完整私密订阅地址，以 secret 保存。切勿填入授权来源字段。",
         range: "图表范围", r7: "7 天", r30: "30 天", zone: "时区", zoneHelp: "按此时区统计日期。修改订阅地址或时区会重新建立历史。",
-        host: "请更新 Genkan：此插件需要对配置主机严格校验 TLS 的能力。", setup: "请在插件设置填写 HTTPS origin，并在小组件设置填写与之匹配的私密订阅地址。",
-        timezone: "请填写有效的 IANA 时区。", limit: "此插件最多支持 5 个小组件实例。", collecting: "等待下一次每小时采样，历史从首次成功采样开始积累。",
+        host: "请更新 Genkan：此插件需要严格 TLS 校验及定时任务访问小组件来源的能力。", setup: "请在小组件设置填写 HTTPS origin 和与之匹配的私密订阅地址。",
+        migration: "请编辑此小组件，将授权来源中的旧编号改为原插件设置中的 HTTPS 协议、主机及可选端口。保留订阅地址和时区即可保留历史。",
+        timezone: "请填写有效的 IANA 时区。", collecting: "等待采样。每个订阅每小时采样，队列繁忙时可能延后。",
         network: "连接、证书校验失败或请求超时。", header: "服务未返回有效的上传和下载计数。", http: "服务返回 HTTP {status}。", redirect: "已拒绝重定向，请配置最终的 HTTPS 订阅入口。", storage: "无法在存储预算内保存此次采样。",
         used: "已用", quota: "总配额", remaining: "剩余", unlimited: "不限量", unknown: "未知", expires: "到期时间", expired: "已到期", upload: "上传", download: "下载", over: "超出配额", updated: "最后成功：{time}",
         stale: "旧数据 · 刷新失败或已超时。{reason}", cumulative: "服务报告累计量（GiB）", daily: "每日可观测增量（GiB）",
@@ -37,27 +37,18 @@ export const messages = {
     },
 };
 export const manifest = {
-    id: "subscription-usage", name: t("name"), version: "1.0.0", description: t("description"), icon: "gauge",
+    id: "subscription-usage", name: t("name"), version: "1.1.0", description: t("description"), icon: "gauge",
     permissions: { fetch: [] },
-    config: [
-        { key: "origin1", type: "url", label: t("origin1"), help: t("originHelp"), allowFetch: true, verifyTLS: true },
-        { key: "origin2", type: "url", label: t("origin2"), help: t("originHelp"), allowFetch: true, verifyTLS: true },
-        { key: "origin3", type: "url", label: t("origin3"), help: t("originHelp"), allowFetch: true, verifyTLS: true },
-        { key: "origin4", type: "url", label: t("origin4"), help: t("originHelp"), allowFetch: true, verifyTLS: true },
-        { key: "origin5", type: "url", label: t("origin5"), help: t("originHelp"), allowFetch: true, verifyTLS: true },
-    ],
     widgets: [{ id: "usage", name: t("name"), size: "m", refresh: 300, config: [
                 { key: "name", type: "string", label: t("label") },
-                { key: "origin", type: "select", label: t("slot"), default: "1", options: [
-                        { value: "1", label: t("origin1") }, { value: "2", label: t("origin2") }, { value: "3", label: t("origin3") }, { value: "4", label: t("origin4") }, { value: "5", label: t("origin5") },
-                    ] },
+                { key: "origin", type: "url", label: t("slot"), help: t("originHelp"), allowFetch: true, verifyTLS: true, required: true },
                 { key: "url", type: "secret", label: t("url"), help: t("urlHelp"), required: true },
                 { key: "range", type: "select", label: t("range"), default: "7", options: [{ value: "7", label: t("r7") }, { value: "30", label: t("r30") }] },
                 { key: "zone", type: "string", label: t("zone"), help: t("zoneHelp"), default: "Asia/Shanghai" },
             ] }],
-    schedules: [{ id: "sample", every: 3600 }],
+    schedules: [{ id: "sample", every: 60 }],
 };
-const HOUR = 3600, DAY = 86400, GIB = 1073741824, PREFIX = "usage:", MAX_BYTES = 40 * 1024;
+const HOUR = 3600, DAY = 86400, GIB = 1073741824, PREFIX = "usage:", MAX_BYTES = 40 * 1024, TOTAL_BYTES = 224 * 1024;
 const safe = n => Number.isSafeInteger(n) && n >= 0;
 const failure = (kind, status) => ({ kind, status });
 const keyOf = id => PREFIX + id;
@@ -99,13 +90,13 @@ function fingerprint(text) {
     return h.map(v => (v >>> 0).toString(16).padStart(8, "0")).join("");
 }
 function config(plugin, cfg) {
-    if (!genkan.capabilities || genkan.capabilities.verifyTLS !== true)
+    if (!genkan.capabilities || genkan.capabilities.verifyTLS !== true || genkan.capabilities.scheduleWidgetFetch !== true)
         throw failure("host");
+    if (/^[1-5]$/.test(cfg.origin || "") || !cfg.origin && plugin && plugin.origin1)
+        throw failure("migration");
     let origin, url;
     try {
-        if (!/^[1-5]$/.test(cfg.origin || "1"))
-            throw 0;
-        origin = new URL(plugin["origin" + (cfg.origin || "1")]);
+        origin = new URL(cfg.origin);
         url = new URL(cfg.url);
         if (origin.protocol !== "https:" || origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash ||
             url.protocol !== "https:" || url.username || url.password || url.hash || url.origin !== origin.origin)
@@ -210,14 +201,16 @@ function prune(state, now) {
     state.points = state.points.filter(p => p[0] >= now - 7 * DAY).slice(-180);
     state.days = state.days.filter(d => d[1] >= now - 30 * DAY).slice(-31);
 }
-function save(id, state, now) {
+function save(id, state, now, budget = MAX_BYTES) {
     prune(state, now);
     const size = () => new TextEncoder().encode(keyOf(id) + JSON.stringify(state)).length;
-    while (size() > MAX_BYTES && state.points.length)
+    while (size() > budget && state.points.length > 1)
         state.points.shift();
-    while (size() > MAX_BYTES && state.days.length > 1)
+    while (size() > budget && state.days.length > 1)
         state.days.shift();
-    if (size() > MAX_BYTES)
+    if (size() > budget && state.points.length)
+        state.points = [];
+    if (size() > budget)
         throw failure("storage");
     try {
         genkan.storage.set(keyOf(id), state);
@@ -260,63 +253,63 @@ function record(state, value, now, zone) {
 function instances() { return genkan.widgets.list().filter(w => w.widget === "usage").sort((a, b) => a.id.localeCompare(b.id)); }
 function message(ctx, err) { return err ? ctx.t(err.kind || "network", { status: err.status }) : ""; }
 export async function schedule(ctx) {
-    const all = instances(), active = all.slice(0, 5), ids = new Set(active.map(w => w.id));
+    const all = instances(), ids = new Set(all.map(w => w.id));
     for (const key of genkan.storage.keys())
         if (key.startsWith(PREFIX) && !ids.has(key.slice(PREFIX.length)))
             genkan.storage.delete(key);
     const now = Math.floor(ctx.now / 1000), until = Date.now() + 45000;
-    let sampled = 0, failed = 0;
-    for (const instance of active) {
-        if (Date.now() > until)
-            break;
-        let cfg;
+    const overhead = genkan.storage.keys().filter(k => !k.startsWith(PREFIX)).reduce((n, k) =>
+        n + new TextEncoder().encode(k + JSON.stringify(genkan.storage.get(k))).length, 0);
+    const budget = Math.min(MAX_BYTES, Math.max(0, Math.floor((TOTAL_BYTES - overhead) / Math.max(1, all.length))));
+    let sampled = 0, failed = 0, cursor = 0;
+    const queue = [];
+    // Rebalance existing history before adding samples, including when new
+    // widgets arrive. Quotas divide bytes, not the number of allowed widgets.
+    for (const instance of all) {
         try {
-            cfg = config(ctx.config, instance.config || {});
+            const stored = genkan.storage.get(keyOf(instance.id));
+            if (stored)
+                save(instance.id, load(instance.id, stored.source), now, budget);
+            const cfg = config(ctx.config, instance.config || {});
+            const prior = load(instance.id, cfg.source);
+            if (!prior.attempt || now - prior.attempt >= HOUR)
+                queue.push({ instance, cfg, attempt: prior.attempt });
         }
-        catch (_) {
-            failed++;
-            continue;
-        }
-        const prior = load(instance.id, cfg.source);
-        if (prior.attempt && now - prior.attempt < 1800)
-            continue;
-        let value, error;
-        try {
-            value = await fetchUsage(cfg.url);
-        }
-        catch (e) {
-            error = e;
-        }
-        // Discard an in-flight result if the widget was removed or reconfigured.
-        const current = instances().slice(0, 5).find(w => w.id === instance.id);
-        try {
-            if (!current || config(ctx.config, current.config || {}).source !== cfg.source)
+        catch (_) { failed++; }
+    }
+    // Oldest attempts first: slow or failing early IDs cannot starve later ones.
+    queue.sort((a, b) => a.attempt - b.attempt || a.instance.id.localeCompare(b.instance.id));
+    async function worker() {
+        while (cursor < queue.length && Date.now() + 8500 < until) {
+            const { instance, cfg } = queue[cursor++];
+            let value, error;
+            try { value = await fetchUsage(cfg.url); }
+            catch (e) { error = e; }
+            const current = instances().find(w => w.id === instance.id);
+            try {
+                if (!current || config(ctx.config, current.config || {}).source !== cfg.source)
+                    continue;
+            }
+            catch (_) { continue; }
+            const state = load(instance.id, cfg.source);
+            if (state.attempt >= now)
                 continue;
-        }
-        catch (_) {
-            continue;
-        }
-        const state = load(instance.id, cfg.source);
-        if (state.attempt >= now)
-            continue;
-        if (error) {
-            state.attempt = now;
-            state.error = { kind: error.kind || "network", ...(error.status ? { status: error.status } : {}) };
-        }
-        else
-            record(state, value, now, cfg.zone);
-        try {
-            save(instance.id, state, now);
-            if (error)
-                failed++;
+            if (error) {
+                state.attempt = now;
+                state.error = { kind: error.kind || "network", ...(error.status ? { status: error.status } : {}) };
+            }
             else
-                sampled++;
-        }
-        catch (_) {
-            failed++;
+                record(state, value, now, cfg.zone);
+            try {
+                save(instance.id, state, now, budget);
+                if (error) failed++;
+                else sampled++;
+            }
+            catch (_) { failed++; }
         }
     }
-    return { sampled, failed, limited: Math.max(0, all.length - 5) };
+    await Promise.all(Array.from({ length: Math.min(4, queue.length) }, () => worker()));
+    return { sampled, failed, pending: queue.length - cursor };
 }
 export async function widget(ctx) {
     const wc = ctx.instance.config || {}, title = String(wc.name || ctx.t("name")).trim().slice(0, 60);
@@ -328,9 +321,6 @@ export async function widget(ctx) {
     catch (e) {
         return { ...view, error: message(ctx, e) };
     }
-    const all = instances(), rank = all.findIndex(w => w.id === ctx.instance.id);
-    if (rank >= 5)
-        return { ...view, error: ctx.t("limit") };
     const state = load(ctx.instance.id, cfg.source), now = Math.floor(ctx.now / 1000);
     if (!state.snapshot)
         return state.error ? { ...view, error: message(ctx, state.error) } : { ...view, body: [{ type: "text", text: ctx.t("collecting"), muted: true }] };
@@ -354,7 +344,8 @@ export async function widget(ctx) {
     body.push({ type: "text", text: t("updated", { time: timestamp(state.ok) }) + " · " + cfg.zone, size: "s", muted: true });
     const range = wc.range === "30" ? 30 : 7, since = now - range * DAY;
     body.push({ type: "divider" }, { type: "text", text: t("period", { days: range, zone: cfg.zone }), muted: true, size: "s" }, { type: "text", text: t("cumulative") });
-    const points = [...state.days.filter(d => d[1] < now - 7 * DAY).map(d => [d[1], d[2], d[3]]), ...state.points.map(p => [p[0], p[1] + p[2], p[3]])].filter(p => p[0] >= since).sort((a, b) => a[0] - b[0]);
+    const detailStart = state.points.length ? state.points[0][0] : Infinity;
+    const points = [...state.days.filter(d => d[1] < detailStart).map(d => [d[1], d[2], d[3]]), ...state.points.map(p => [p[0], p[1] + p[2], p[3]])].filter(p => p[0] >= since).sort((a, b) => a[0] - b[0]);
     const groups = [];
     for (const p of points) {
         let group = groups[groups.length - 1];
