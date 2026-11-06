@@ -4,8 +4,6 @@ package plugin
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -42,13 +40,6 @@ func TestSubscriptionUsageRuntime(t *testing.T) {
 		canceled.Add(1)
 	}))
 	defer stub.Close()
-	roots := x509.NewCertPool()
-	roots.AddCert(stub.Certificate())
-	old := http.DefaultTransport
-	transport := old.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
-	http.DefaultTransport = transport
-	defer func() { http.DefaultTransport = old; transport.CloseIdleConnections() }()
 	raw, err := os.ReadFile(os.Getenv("SUBSCRIPTION_PLUGIN_SOURCE"))
 	if err != nil {
 		t.Fatal(err)
@@ -60,8 +51,8 @@ func TestSubscriptionUsageRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	url := stub.URL + "/fixture?key=synthetic-private-value"
-	w := addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": url, "zone": "UTC"})
-	other := addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": url, "zone": "UTC"})
+	w := addWidget(t, e, "subscription-usage", "usage", map[string]any{"url": url, "zone": "UTC"})
+	other := addWidget(t, e, "subscription-usage", "usage", map[string]any{"url": url, "zone": "UTC"})
 	ent, _, _ := e.m.entryFor("subscription-usage")
 	clock := time.Date(2026, 10, 1, 1, 0, 0, 0, time.UTC).UnixMilli()
 	setClock := func(n int64) {
@@ -166,13 +157,6 @@ func TestSubscriptionUsageRuntimeLarge(t *testing.T) {
 		w.Header().Set("Subscription-Userinfo", fmt.Sprintf("upload=%d; download=200", id))
 	}))
 	defer stub.Close()
-	roots := x509.NewCertPool()
-	roots.AddCert(stub.Certificate())
-	old := http.DefaultTransport
-	transport := old.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
-	http.DefaultTransport = transport
-	defer func() { http.DefaultTransport = old; transport.CloseIdleConnections() }()
 	raw, err := os.ReadFile(os.Getenv("SUBSCRIPTION_PLUGIN_SOURCE"))
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +169,7 @@ func TestSubscriptionUsageRuntimeLarge(t *testing.T) {
 	}
 	var last WidgetOut
 	for i := 0; i < 200; i++ {
-		last = addWidget(t, e, "subscription-usage", "usage", map[string]any{"origin": stub.URL, "url": fmt.Sprintf("%s/sub?id=%d", stub.URL, i), "zone": "UTC"})
+		last = addWidget(t, e, "subscription-usage", "usage", map[string]any{"url": fmt.Sprintf("%s/sub?id=%d", stub.URL, i), "zone": "UTC"})
 	}
 	started := time.Now()
 	for i := 0; i < 2; i++ {

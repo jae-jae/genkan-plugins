@@ -14,7 +14,7 @@
 | [比特币价格](plugins/bitcoin-price.js) | 显示比特币的美元或人民币价格、24 小时涨跌幅和更新时间，支持中英文，每 5 分钟刷新。 |
 | [股票走势](plugins/stock-trend.js) | 显示指数或个股行情、日涨跌和最近一天／一个月／一年的走势图，默认纳斯达克综合指数，支持中英文，每 5 分钟刷新。 |
 | [SSH 服务器](plugins/ssh-server.js) | 原生 SSH 采集 Linux 的 CPU、内存、根分区、网络速率与趋势，每 30 秒刷新；需要支持 SSH 的新版 Genkan。 |
-| [机场订阅用量](plugins/subscription-usage.js) | 严格 TLS 校验，每小时记录订阅快照，展示 7／30 天趋势与每日可观测增量。 |
+| [机场订阅用量](plugins/subscription-usage.js) | 每小时记录订阅快照，展示 7／30 天趋势与每日可观测增量。 |
 
 ## 安装
 
@@ -46,7 +46,7 @@ SSH 服务器的安装地址（需要支持原生 SSH 的 Genkan 版本）：
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-机场订阅用量的安装地址（需要支持严格 TLS 校验及定时任务访问小组件来源的 Genkan）：
+机场订阅用量的安装地址（需要支持私密地址网络授权及后台采样的 Genkan）：
 
 ```text
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
@@ -92,15 +92,14 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscripti
 
 ## 机场订阅用量设置
 
-需要支持严格 TLS 校验及定时任务访问小组件来源的 Genkan，以及返回 `Subscription-Userinfo` 响应头的订阅服务。每个订阅每小时采样，提供中英文卡片和 7／30 天图表，插件不额外限制小组件数量。
+需要支持私密地址网络授权及后台采样的 Genkan，以及返回 `Subscription-Userinfo` 响应头的订阅服务。每个订阅每小时采样，提供中英文卡片和 7／30 天图表，插件不额外限制小组件数量。
 
-- **授权来源：** 在每个小组件中填写 HTTPS 协议、主机及可选端口，不含路径或令牌。
-- **订阅地址：** 将完整私密链接填入 secret 字段，其来源须与授权来源一致。请使用最终 HTTPS 地址，插件严格校验证书，不跟随重定向。
+- **订阅地址：** 填写完整 HTTP(S) 订阅链接，以 secret 保存，无需另填授权来源。HTTPS 不校验证书，不跟随重定向。
 - **图表选项：** 可设置显示名、7／30 天范围和时区，默认 `Asia/Shanghai`。修改订阅地址或时区会重新建立历史。
 
 更新失败时保留旧读数并标记。每日增量只统计有效观测区间，排除采样缺口和计数重置，不能作为精确账单。历史从配置后开始记录。仍受宿主实例、运行时间和存储限制：队列繁忙时延后采样，共享存储不足时缩短历史保留范围。
 
-从 1.0 升级：更新前记下已配置的来源，更新后将每个小组件的旧来源编号改填为 HTTPS 来源。订阅地址和时区保持不变即可保留历史。
+更新宿主和插件后，已有订阅链接可继续使用，旧授权来源配置自动忽略；订阅地址和时区不变即可保留历史。
 
 ## 添加插件
 

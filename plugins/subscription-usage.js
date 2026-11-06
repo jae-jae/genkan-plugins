@@ -3,13 +3,11 @@
 export const messages = {
     en: {
         name: "Subscription Usage", description: "Hourly subscription usage snapshots and observed daily changes.",
-        originHelp: "HTTPS origin only, without credentials, path or query. TLS certificates are verified.",
-        slot: "Allowed origin", label: "Display name", url: "Subscription URL", urlHelp: "Full private URL. Stored as a secret; never put it in an origin field.",
+        label: "Display name", url: "Subscription URL", urlHelp: "Full private subscription URL. Stored as a secret.",
         range: "Chart range", r7: "7 days", r30: "30 days", zone: "Time zone", zoneHelp: "Daily totals use this zone. Changing the URL or zone starts a new history.",
-        host: "Update Genkan: this plugin requires verified TLS and scheduled widget origins.", setup: "Set a matching HTTPS origin and private subscription URL in this widget’s settings.",
-        migration: "Update this widget’s Allowed origin: replace the old slot number with the HTTPS scheme, host and optional port previously saved in plugin settings. Keep the Subscription URL and time zone unchanged to retain history.",
+        host: "Update Genkan: this plugin requires private URL fetch and scheduled widget access.", setup: "Enter a valid HTTP(S) subscription URL.",
         timezone: "Enter a valid IANA time zone.", collecting: "Waiting for a sample. Subscriptions are sampled hourly; busy queues may take longer.",
-        network: "Connection, certificate verification or timeout failure.", header: "The service did not provide valid upload and download counters.", http: "The service returned HTTP {status}.", redirect: "Redirect refused. Configure the final HTTPS subscription endpoint instead.", storage: "Could not save the sample within the storage budget.",
+        network: "Connection failure or request timeout.", header: "The service did not provide valid upload and download counters.", http: "The service returned HTTP {status}.", redirect: "Redirect refused. Configure the final HTTP(S) subscription endpoint instead.", storage: "Could not save the sample within the storage budget.",
         used: "Used", quota: "Allowance", remaining: "Remaining", unlimited: "Unlimited", unknown: "Unknown", expires: "Expires", expired: "Expired", upload: "Upload", download: "Download", over: "Over allowance", updated: "Last success: {time}",
         stale: "Saved data · refresh failed or overdue. {reason}", cumulative: "Reported cumulative usage (GiB)", daily: "Observed daily increase (GiB)",
         dailyNote: "Partial observations, not billing totals. Gaps, resets and intervals crossing midnight are excluded; dates with no observed interval are omitted.",
@@ -20,13 +18,11 @@ export const messages = {
     },
     zh: {
         name: "机场订阅用量", description: "每小时记录订阅用量，展示累计趋势和每日可观测增量。",
-        originHelp: "仅填写 HTTPS origin，不含凭据、路径或查询参数。严格校验证书。",
-        slot: "授权来源", label: "显示名称", url: "订阅地址", urlHelp: "完整私密订阅地址，以 secret 保存。切勿填入授权来源字段。",
+        label: "显示名称", url: "订阅地址", urlHelp: "填写完整私密订阅地址，以 secret 保存。",
         range: "图表范围", r7: "7 天", r30: "30 天", zone: "时区", zoneHelp: "按此时区统计日期。修改订阅地址或时区会重新建立历史。",
-        host: "请更新 Genkan：此插件需要严格 TLS 校验及定时任务访问小组件来源的能力。", setup: "请在小组件设置填写 HTTPS origin 和与之匹配的私密订阅地址。",
-        migration: "请编辑此小组件，将授权来源中的旧编号改为原插件设置中的 HTTPS 协议、主机及可选端口。保留订阅地址和时区即可保留历史。",
+        host: "请更新 Genkan：此插件需要私密地址网络授权及定时任务访问小组件的能力。", setup: "请填写有效的 HTTP(S) 订阅地址。",
         timezone: "请填写有效的 IANA 时区。", collecting: "等待采样。每个订阅每小时采样，队列繁忙时可能延后。",
-        network: "连接、证书校验失败或请求超时。", header: "服务未返回有效的上传和下载计数。", http: "服务返回 HTTP {status}。", redirect: "已拒绝重定向，请配置最终的 HTTPS 订阅入口。", storage: "无法在存储预算内保存此次采样。",
+        network: "连接失败或请求超时。", header: "服务未返回有效的上传和下载计数。", http: "服务返回 HTTP {status}。", redirect: "已拒绝重定向，请配置最终的 HTTP(S) 订阅入口。", storage: "无法在存储预算内保存此次采样。",
         used: "已用", quota: "总配额", remaining: "剩余", unlimited: "不限量", unknown: "未知", expires: "到期时间", expired: "已到期", upload: "上传", download: "下载", over: "超出配额", updated: "最后成功：{time}",
         stale: "旧数据 · 刷新失败或已超时。{reason}", cumulative: "服务报告累计量（GiB）", daily: "每日可观测增量（GiB）",
         dailyNote: "仅部分观测，非账单用量。缺口、重置及跨午夜区间不计入；没有可观测区间的日期不画柱。",
@@ -37,12 +33,11 @@ export const messages = {
     },
 };
 export const manifest = {
-    id: "subscription-usage", name: t("name"), version: "1.1.0", description: t("description"), icon: "gauge",
+    id: "subscription-usage", name: t("name"), version: "1.2.0", description: t("description"), icon: "gauge",
     permissions: { fetch: [] },
     widgets: [{ id: "usage", name: t("name"), size: "m", refresh: 300, config: [
                 { key: "name", type: "string", label: t("label") },
-                { key: "origin", type: "url", label: t("slot"), help: t("originHelp"), allowFetch: true, verifyTLS: true, required: true },
-                { key: "url", type: "secret", label: t("url"), help: t("urlHelp"), required: true },
+                { key: "url", type: "secret", label: t("url"), help: t("urlHelp"), required: true, allowFetch: !!(genkan.capabilities && genkan.capabilities.secretFetch) },
                 { key: "range", type: "select", label: t("range"), default: "7", options: [{ value: "7", label: t("r7") }, { value: "30", label: t("r30") }] },
                 { key: "zone", type: "string", label: t("zone"), help: t("zoneHelp"), default: "Asia/Shanghai" },
             ] }],
@@ -90,16 +85,12 @@ function fingerprint(text) {
     return h.map(v => (v >>> 0).toString(16).padStart(8, "0")).join("");
 }
 function config(plugin, cfg) {
-    if (!genkan.capabilities || genkan.capabilities.verifyTLS !== true || genkan.capabilities.scheduleWidgetFetch !== true)
+    if (!genkan.capabilities || genkan.capabilities.secretFetch !== true || genkan.capabilities.scheduleWidgetFetch !== true)
         throw failure("host");
-    if (/^[1-5]$/.test(cfg.origin || "") || !cfg.origin && plugin && plugin.origin1)
-        throw failure("migration");
-    let origin, url;
+    let url;
     try {
-        origin = new URL(cfg.origin);
         url = new URL(cfg.url);
-        if (origin.protocol !== "https:" || origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash ||
-            url.protocol !== "https:" || url.username || url.password || url.hash || url.origin !== origin.origin)
+        if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.hash || url.hostname.includes("*"))
             throw 0;
     }
     catch (_) {

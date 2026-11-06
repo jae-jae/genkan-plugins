@@ -14,7 +14,7 @@ A collection of plugins for [Genkan](https://github.com/jae-jae/genkan).
 | [Bitcoin Price](plugins/bitcoin-price.js) | Shows the Bitcoin price in USD or CNY, 24-hour change and update time. Supports English and Chinese; refreshes every 5 minutes. |
 | [Stock Trend](plugins/stock-trend.js) | Shows index or stock quotes, daily changes and a price chart for the past day, month or year. Defaults to the Nasdaq Composite; supports English and Chinese; refreshes every 5 minutes. |
 | [SSH Server](plugins/ssh-server.js) | Native SSH metrics for Linux: CPU, memory, root disk, network rates and history, refreshed every 30 seconds. Requires a Genkan build with SSH support. |
-| [Subscription Usage](plugins/subscription-usage.js) | Hourly subscription snapshots, 7/30-day trends and observed daily increases with verified TLS. |
+| [Subscription Usage](plugins/subscription-usage.js) | Hourly subscription snapshots, 7/30-day trends and observed daily increases. |
 
 ## Install
 
@@ -46,7 +46,7 @@ SSH Server installation URL (requires a Genkan build with native SSH support):
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-Subscription Usage installation URL (requires a Genkan build with verified TLS and scheduled widget origin support):
+Subscription Usage installation URL (requires a Genkan build with private URL fetch support):
 
 ```text
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
@@ -92,15 +92,14 @@ The widget shows Linux CPU, memory, root filesystem usage and combined network r
 
 ## Subscription Usage settings
 
-Requires Genkan support for verified TLS and scheduled widget origins. The subscription service must return `Subscription-Userinfo`. Each subscription is sampled hourly, with English/Chinese cards and 7/30-day charts. There is no plugin-specific widget count limit.
+Requires Genkan support for private URL fetch and background sampling. The subscription service must return `Subscription-Userinfo`. Each subscription is sampled hourly, with English/Chinese cards and 7/30-day charts. There is no plugin-specific widget count limit.
 
-- **Allowed origin:** In each widget, enter the HTTPS scheme, host and optional port only, without a path or token.
-- **Subscription URL:** Paste the full private URL into the secret field; its origin must match. Use the final HTTPS URL; certificates are verified and redirects are refused.
+- **Subscription URL:** Paste the full HTTP(S) subscription link into the secret field. No separate origin is needed. HTTPS certificates are not verified; redirects are refused.
 - **Chart options:** Choose a display name, 7/30-day range and time zone (default `Asia/Shanghai`). Changing the URL or time zone starts a new history.
 
 Failed updates retain the last reading and mark it stale. Daily increases cover only observed intervals; gaps and counter resets are excluded, so these are not billing totals. History starts after setup. Host instance, runtime and storage limits still apply: a busy queue delays sampling, and shared storage pressure shortens retained history.
 
-Upgrading from 1.0: note your configured origins before updating, then replace each widget’s old origin number with its HTTPS origin. Keep its subscription URL and time zone unchanged to retain history.
+Existing subscription URLs keep working after updating the host and plugin. Old origin settings are ignored; unchanged URLs and time zones retain their history.
 
 ## Add a plugin
 

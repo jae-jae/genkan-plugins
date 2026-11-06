@@ -8,9 +8,9 @@ const HOUR = 3600000, DAY = 24 * HOUR, start = Date.UTC(2026, 9, 1, 1);
 const origin = 'https://subscription.example.test';
 const fakeURL = 'https://subscription.example.test/sub?key=fixture-only-private-value';
 const fields = (u = 100, d = 200, total = 10000) => `upload=${u}; download=${d}; total=${total}; expire=2000000000`;
-function runtime({ fastTimeout = false, clock = Date, capabilities = { verifyTLS: true, scheduleWidgetFetch: true } } = {}) {
+function runtime({ fastTimeout = false, clock = Date, capabilities = { secretFetch: true, scheduleWidgetFetch: true } } = {}) {
     const storage = new Map(), requests = [], logs = [], canceled = [];
-    let widgets = [{ id: 'one', widget: 'usage', config: { origin, url: fakeURL, zone: 'UTC' } }], responder = () => response(fields());
+    let widgets = [{ id: 'one', widget: 'usage', config: { url: fakeURL, zone: 'UTC' } }], responder = () => response(fields());
     function response(header, status = 200) { return { status, ok: status >= 200 && status < 300, headers: new Headers(header == null ? {} : { 'Subscription-Userinfo': header }), body: { cancel: async () => canceled.push(true) } }; }
     const api = vm.runInNewContext(source.replace(/\bexport (?=(?:const|async function)\b)/g, '') + '\n;({manifest,messages,widget,schedule,parseHeader,fingerprint,config,record,blank,save});', {
         Date: clock, Intl, URL, Headers, TextEncoder, AbortController, setTimeout: fastTimeout ? fn => setTimeout(fn, 5) : setTimeout, clearTimeout,
@@ -29,13 +29,15 @@ function runtime({ fastTimeout = false, clock = Date, capabilities = { verifyTLS
 }
 const text = view => JSON.stringify(view);
 const state = api => api.storage.get('usage:one');
-test('manifest, catalog, strict origins and translations', () => {
+test('manifest, catalog, private URL authorization and translations', () => {
     const a = runtime();
     assert.deepEqual(Object.keys(a.messages.en).sort(), Object.keys(a.messages.zh).sort());
     assert.equal(a.manifest.permissions.fetch.length, 0);
     assert.equal(a.manifest.config, undefined);
-    const field = a.manifest.widgets[0].config.find(f => f.key === 'origin');
-    assert.ok(field.type === 'url' && field.allowFetch && field.verifyTLS);
+    assert.equal(a.manifest.widgets[0].config.some(f => f.key === 'origin'), false);
+    const field = a.manifest.widgets[0].config.find(f => f.key === 'url');
+    assert.ok(field.type === 'secret' && field.allowFetch);
+    assert.equal(field.verifyTLS, undefined);
     assert.equal(a.manifest.widgets[0].config.find(f => f.key === 'url').type, 'secret');
     assert.equal(a.manifest.schedules[0].every, 60);
     const catalog = JSON.parse(readFileSync(new URL('../genkan-plugins.json', import.meta.url), 'utf8'));
@@ -115,27 +117,33 @@ test('missing header on both requests is a failed sample; scheduler silence also
     assert.equal(state(a).error.kind, 'header');
     assert.equal(state(a).points.length, 1);
 });
-test('origin validation and capability gate fail closed before any request', async () => {
+test('private URL validation and capability gate fail closed before any request', async () => {
     const a = runtime();
     const base = a.context();
-    for (const invalidOrigin of ['https://subscription.example.test/path', 'https://subscription.example.test/?key=secret', 'https://name:password@subscription.example.test', 'http://subscription.example.test']) {
-        const ctx = a.context();
-        a.setWidgets([{ ...a.getWidgets()[0], config: { ...base.instance.config, origin: invalidOrigin } }]);
-        ctx.instance.config.origin = invalidOrigin;
-        assert.match(text(await a.widget(ctx)), /matching HTTPS/);
-        await a.schedule(ctx);
-    }
-    for (const url of ['https://another.example.test/', 'http://subscription.example.test/', 'https://name:password@subscription.example.test/', 'https://subscription.example.test/#fragment']) {
+    for (const url of ['not-a-url', 'ftp://subscription.example.test/', 'https://name:password@subscription.example.test/', 'https://subscription.example.test/#fragment', 'https://*.example.test/sub']) {
         a.setWidgets([{ id: 'one', widget: 'usage', config: { ...base.instance.config, url } }]);
+        assert.match(text(await a.widget(a.context())), /valid HTTP/);
         await a.schedule(a.context());
     }
     assert.equal(a.requests.length, 0);
     const cfg = base.instance.config;
     cfg.zone = 'Not/AZone';
     assert.throws(() => a.config(base.config, cfg));
-    const old = source;
-    const hook = vm.runInNewContext(old.replace(/\bexport (?=(?:const|async function)\b)/g, '') + ';widget;', { t: k => k, genkan: { capabilities: {} }, URL, Intl });
-    assert.match(text(await hook(base)), /requires verified TLS/);
+    for (const capabilities of [{}, { verifyTLS: true, scheduleWidgetFetch: true }, { secretFetch: true }]) {
+        const old = runtime({ capabilities });
+        await old.schedule(old.context());
+        assert.equal(old.requests.length, 0);
+        assert.match((await old.widget(old.context())).error, /private URL fetch/);
+        if (!capabilities.secretFetch)
+            assert.equal(old.manifest.widgets[0].config.find(f => f.key === 'url').allowFetch, false);
+    }
+});
+test('HTTP subscription URLs work with only the secret field', async () => {
+    const a = runtime();
+    a.setWidgets([{ id: 'one', widget: 'usage', config: { url: fakeURL.replace('https:', 'http:') } }]);
+    await a.schedule(a.context());
+    assert.ok(state(a).snapshot);
+    assert.equal(a.requests.length, 1);
 });
 test('positive within-day deltas, zero deltas, resets, failures and long gaps', async () => {
     const a = runtime();
@@ -172,7 +180,7 @@ test('positive within-day deltas, zero deltas, resets, failures and long gaps', 
 });
 test('midnight and DST do not invent daily allocation', async () => {
     const a = runtime();
-    a.setWidgets([{ id: 'one', widget: 'usage', config: { origin, url: fakeURL, zone: 'America/New_York' } }]);
+    a.setWidgets([{ id: 'one', widget: 'usage', config: { url: fakeURL, zone: 'America/New_York' } }]);
     const midnight = Date.UTC(2026, 10, 1, 4);
     let n = 1;
     a.setResponder(() => a.response(fields(n++, 0)));
@@ -189,10 +197,10 @@ test('midnight and DST do not invent daily allocation', async () => {
 });
 test('same URL instances stay isolated, source changes reset, deleted/reconfigured in-flight samples are discarded', async () => {
     const a = runtime();
-    a.setWidgets(['one', 'two'].map(id => ({ id, widget: 'usage', config: { origin, url: fakeURL, zone: 'UTC' } })));
+    a.setWidgets(['one', 'two'].map(id => ({ id, widget: 'usage', config: { url: fakeURL, zone: 'UTC' } })));
     await a.schedule(a.context());
     assert.equal(a.storage.size, 2);
-    a.setWidgets([{ id: 'one', widget: 'usage', config: { origin, url: fakeURL + '&new=1', zone: 'UTC' } }]);
+    a.setWidgets([{ id: 'one', widget: 'usage', config: { url: fakeURL + '&new=1', zone: 'UTC' } }]);
     await a.schedule(a.context(start + HOUR));
     assert.equal(a.storage.size, 1);
     assert.equal(state(a).points.length, 1);
@@ -227,7 +235,7 @@ test('quota unknown/unlimited/overage and expiry render without division by zero
 test('40-day compaction and shared storage budget preserve daily aggregates', async () => {
     const a = runtime();
     const ids = ['one', 'two', 'three', 'four', 'five'];
-    a.setWidgets(ids.map(id => ({ id, widget: 'usage', config: { origin, url: fakeURL } })));
+    a.setWidgets(ids.map(id => ({ id, widget: 'usage', config: { url: fakeURL } })));
     let n = 0;
     a.setResponder(() => a.response(fields(1000000000000 + n * 1000000, 2000000000000 + n * 2000000, 9000000000000000)));
     for (let hour = 0; hour < 40 * 24; hour++) {
@@ -279,7 +287,7 @@ test('a one-byte observed increase never becomes a zero bar', async () => {
 test('200 instances share the full storage budget including metadata; new and invalid instances rebalance old history', async () => {
     const a = runtime();
     const ids = Array.from({ length: 200 }, (_, i) => `widget-${String(i).padStart(3, '0')}`);
-    const configs = ids.map((id, i) => ({ id, widget: 'usage', config: { origin, url: fakeURL + '&id=' + i, zone: 'UTC' } }));
+    const configs = ids.map((id, i) => ({ id, widget: 'usage', config: { url: fakeURL + '&id=' + i, zone: 'UTC' } }));
     a.setWidgets(configs.slice(0, 5));
     a.storage.set('metadata', 'x'.repeat(12000));
     for (let i = 0; i < 5; i++) {
@@ -289,7 +297,7 @@ test('200 instances share the full storage budget including metadata; new and in
         a.save(ids[i], s, start / 1000 + 179 * 3600);
     }
     a.storage.set('usage:deleted', a.storage.get('usage:' + ids[0]));
-    configs[0].config.origin = '1'; // migration must not prevent global compaction
+    configs[0].config.url = 'invalid-url'; // invalid configuration must not prevent global compaction
     a.setWidgets(configs);
     a.setResponder(url => a.response(fields(Number(new URL(url).searchParams.get('id')), 200)));
     const now = start + 180 * HOUR;
@@ -321,7 +329,7 @@ test('bounded concurrency and oldest-first batches prevent 200 slow instances fr
     class Clock extends Date { static now() { return clockTime; } }
     const a = runtime({ clock: Clock });
     const ids = Array.from({ length: 200 }, (_, i) => String(i).padStart(3, '0'));
-    a.setWidgets(ids.map(id => ({ id, widget: 'usage', config: { origin, url: fakeURL + '&id=' + id } })));
+    a.setWidgets(ids.map(id => ({ id, widget: 'usage', config: { url: fakeURL + '&id=' + id } })));
     a.setResponder(url => new Promise((resolve, reject) => {
         active++;
         peak = Math.max(peak, active);
@@ -353,35 +361,22 @@ test('bounded concurrency and oldest-first batches prevent 200 slow instances fr
     assert.equal(a.storage.get('usage:199').snapshot.u, 199);
 });
 
-test('old slots show localized migration instructions and origin-only migration preserves history', async () => {
+test('old origin slots and addresses are ignored without losing subscription history', async () => {
     const a = runtime();
     await a.schedule(a.context());
     const before = state(a);
-    a.setWidgets([{ id: 'one', widget: 'usage', config: { origin: '1', url: fakeURL, zone: 'UTC' } }]);
-    for (const lang of ['en', 'zh']) {
-        const view = await a.widget(a.context(start, lang));
-        assert.match(view.error, lang === 'en' ? /old slot number/ : /旧编号/);
+    const legacy = [undefined, '1', '5', 'https://old.example.test', 'invalid old origin'];
+    for (let i = 0; i < legacy.length; i++) {
+        a.setWidgets([{ id: 'one', widget: 'usage', config: { origin: legacy[i], url: fakeURL, zone: 'UTC' } }]);
+        const ctx = a.context(start + (i + 1) * HOUR);
+        ctx.config.origin1 = 'https://old.example.test';
+        await a.schedule(ctx);
+        assert.equal(state(a).source, before.source);
+        assert.equal(state(a).points.length, i + 2);
+        for (const lang of ['en', 'zh'])
+            assert.equal((await a.widget(a.context(ctx.now, lang))).error, undefined);
     }
-    const implicit = a.context();
-    delete implicit.instance.config.origin;
-    implicit.config.origin1 = origin;
-    assert.match((await a.widget(implicit)).error, /old slot number/);
-    await a.schedule(a.context(start + 60000));
-    assert.deepEqual(state(a), before);
-    assert.equal(a.requests.length, 1);
-    a.setWidgets([{ id: 'one', widget: 'usage', config: { origin, url: fakeURL, zone: 'UTC' } }]);
-    await a.schedule(a.context(start + HOUR));
-    assert.equal(state(a).source, before.source);
-    assert.equal(state(a).points.length, 2);
 });
-
-test('missing schedule-origin capability blocks requests without weakening TLS', async () => {
-    const a = runtime({ capabilities: { verifyTLS: true } });
-    await a.schedule(a.context());
-    assert.equal(a.requests.length, 0);
-    assert.match((await a.widget(a.context())).error, /Update Genkan/);
-});
-
 test('storage compression keeps recent daily snapshots visible when hourly detail is trimmed', async () => {
     const a = runtime(), cfg = a.config({}, a.context().instance.config), s = a.blank(cfg.source);
     for (let h = 0; h < 6 * 24; h++)
