@@ -1,6 +1,7 @@
 {
   "plugins": [
     "plugins/codex-usage.js",
-    "plugins/bitcoin-price.js"
+    "plugins/bitcoin-price.js",
+    "plugins/stock-trend.js"
   ]
 }

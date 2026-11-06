@@ -12,6 +12,7 @@ A collection of plugins for [Genkan](https://github.com/jae-jae/genkan).
 | --- | --- |
 | [Codex Usage](plugins/codex-usage.js) | Shows your Codex subscription allowance, reset times, plan and available credits. Supports English and Chinese; refreshes every 5 minutes. |
 | [Bitcoin Price](plugins/bitcoin-price.js) | Shows the Bitcoin price in USD or CNY, 24-hour change and update time. Supports English and Chinese; refreshes every 5 minutes. |
+| [Stock Trend](plugins/stock-trend.js) | Shows index or stock quotes, daily changes and a price chart for the past day, month or year. Defaults to the Nasdaq Composite; supports English and Chinese; refreshes every 5 minutes. |
 
 ## Install
 
@@ -31,6 +32,12 @@ Bitcoin Price installation URL:
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/bitcoin-price.js
 ```
 
+Stock Trend installation URL:
+
+```text
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/stock-trend.js
+```
+
 ## Codex Usage settings
 
 - **Access token:** After signing in to Codex with ChatGPT, copy the value at `~/.codex/auth.json → tokens.access_token`. Paste only the value, without quotes or other fields. Replace it when it expires. This is an account credential; keep it private and use a trusted Genkan instance.
@@ -45,6 +52,15 @@ The widget shows the quota windows returned by Codex. It queries only `chatgpt.c
 - No API key is required. Prices and 24-hour changes come from CoinPaprika; update times are shown in UTC.
 
 The plugin queries only `api.coinpaprika.com` and does not request bookmark permissions. It caches prices for 5 minutes. If a refresh fails, it shows the last saved price with a warning for up to one hour after the provider's update time. Older data produces an error instead of a price; provider data over 10 minutes old is marked as stale.
+
+## Stock Trend settings
+
+- **Ticker symbol:** Defaults to `^IXIC` (Nasdaq Composite). Use Yahoo Finance symbols such as `^NDX` (Nasdaq 100), `AAPL` or `MSFT` for other instruments.
+- **Display name:** Optional. Leave blank to use the ticker or known index name.
+- **Default chart period:** The past month by default; choose the past day, month or year. Administrators can also switch periods on the card. A one-day chart shows the latest available trading session.
+- No API key is required. Quote times are shown in UTC, and prices may be delayed. Daily changes use the previous trading day's close, independently of the chart period. Chart colors follow the selected period's first-to-last price; prices are not adjusted for splits or dividends.
+
+The plugin queries only `query1.finance.yahoo.com` and `query2.finance.yahoo.com`, with no bookmark permissions or embedded third-party pages. It caches one quote and chart per widget for 5 minutes. If a request fails, it can show the saved data for the same ticker and period with a cache-time warning; there is no maximum age for this fallback. Yahoo Finance's public chart endpoint may change or rate-limit requests.
 
 ## Add a plugin
 
