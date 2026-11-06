@@ -14,6 +14,7 @@ A collection of plugins for [Genkan](https://github.com/jae-jae/genkan).
 | [Bitcoin Price](plugins/bitcoin-price.js) | Shows the Bitcoin price in USD or CNY, 24-hour change and update time. Supports English and Chinese; refreshes every 5 minutes. |
 | [Stock Trend](plugins/stock-trend.js) | Shows index or stock quotes, daily changes and a price chart for the past day, month or year. Defaults to the Nasdaq Composite; supports English and Chinese; refreshes every 5 minutes. |
 | [SSH Server](plugins/ssh-server.js) | Native SSH metrics for Linux: CPU, memory, root disk, network rates and history, refreshed every 30 seconds. Requires a Genkan build with SSH support. |
+| [Subscription Usage](plugins/subscription-usage.js) | Hourly subscription snapshots, 7/30-day trends and observed daily increases with verified TLS. |
 
 ## Install
 
@@ -44,6 +45,8 @@ SSH Server installation URL (requires a Genkan build with native SSH support):
 ```text
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
+
+Subscription Usage local installation (requires a Genkan build with `verifyTLS` support): install the source file [plugins/subscription-usage.js](plugins/subscription-usage.js). This plugin has not been published by this task.
 
 ## Codex Usage settings
 
@@ -83,9 +86,27 @@ The plugin requests SSH resource-collection permission, with no HTTP or bookmark
 
 The widget shows Linux CPU, memory, root filesystem usage and combined network rates. Container quotas and other mount points are not covered; bridge and virtual interfaces may cause network traffic to be counted more than once. CPU history starts with the second sample and keeps up to 60 samples over 30 minutes while the page polls the widget. Connection failures can show saved readings for up to five minutes, marked with their sample time; authentication failures show an error instead.
 
+## Subscription Usage settings
+
+`plugins/subscription-usage.js` reads `Subscription-Userinfo` headers and records hourly snapshots. It supports up to five independent widget instances, English/Chinese, 7/30-day cumulative charts and observed daily increases. The widget reads saved data every five minutes; opening the page does not fetch subscriptions.
+
+**Host requirement:** Genkan must support `ConfigField.verifyTLS` and expose `genkan.capabilities.verifyTLS === true`. Older hosts show an upgrade message and make no requests. Deploy the corresponding host change with this plugin; it never falls back to unverified TLS.
+
+In plugin settings, fill one of **Allowed origin 1–5** with an HTTPS origin (scheme, host and optional port only). Do not include credentials, paths, queries or fragments. In each widget, select that origin and put the full private subscription URL in the **secret** Subscription URL field. Its origin must match. Select a display name, 7/30-day range and IANA time zone (default `Asia/Shanghai`). Changing the URL, including a token rotation, or the time zone starts a new history. Only the first five instances in ID order are sampled; additional widgets show a limit message.
+
+All configured origins use strict certificate verification, with no bookmark permissions or wildcard network access. Requests use `User-Agent: clash.meta`: HEAD first, then one GET if HEAD is unsupported or lacks usable counters. The GET body is canceled without reading node configurations. Redirects are refused: use the final HTTPS endpoint. Authentication failures and rate limits are not immediately retried. One failed subscription does not stop the others.
+
+Used bytes are `upload + download`; missing or invalid counters do not produce a sample. Missing quota is unknown; `total=0` means unlimited. Missing/zero expiration is unknown. Overages, expiry and stale data are indicated. A failed refresh preserves the last successful snapshot and its time; data is also marked stale after two hours without a successful sample.
+
+The cumulative chart represents reported counter snapshots, split at decreases, failed observations or gaps over 90 minutes, showing at most the latest three segments. Daily bars sum only consecutive, non-reset observations within the same local date. Intervals crossing midnight, gaps and reset intervals are excluded, never interpolated or allocated across dates. Dates marked `*` are partial observations; dates with no observed interval are omitted, not filled with zero. The latest observed day shows covered hours and interval count. **These are not precise billing totals, and history before installation cannot be recovered.**
+
+History is isolated by widget ID. URLs are never used as keys or stored in history; only a SHA-256 source identity and numeric state are saved. Retention is seven days of hourly detail and 30 days of daily summaries, capped at 40 KiB per instance and 200 KiB across five instances. Deleted or over-limit instance history is cleaned up on the next schedule. Sampling pauses while Genkan or the plugin is stopped. Visitors with page access can see usage cards; configure guest access accordingly.
+
+Run `npm test` for offline tests. `npm run test:host` also verifies the plugin inside the sibling `../genkan` checkout using a Go overlay, without writing tests into that checkout. For another host location use `node tests/run-host-tests.mjs /path/to/genkan`. Host integration uses temporary loopback HTTPS services and test certificates, with no real subscription credentials or Genkan token.
+
 ## Add a plugin
 
-Add its JavaScript file to `plugins/`, register it in `genkan-plugins.json`, and update both READMEs. See the [Genkan plugin guide](https://github.com/jae-jae/genkan/blob/main/docs/PLUGIN_DEV.md).
+Add its JavaScript file to `plugins/`, register it in `genkan-plugins.json`, and update both READMEs. See the [Genkan plugin guide](https://github.com/jae-jae/genkan/blob/main/skills/genkan/plugin-dev.md).
 
 Run tests with Node.js 22 or later:
 
