@@ -46,7 +46,11 @@ SSH Server installation URL (requires a Genkan build with native SSH support):
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-Subscription Usage local installation (requires a Genkan build with `verifyTLS` support): install the source file [plugins/subscription-usage.js](plugins/subscription-usage.js). This plugin has not been published by this task.
+Subscription Usage installation URL (requires a Genkan build with `verifyTLS` support):
+
+```text
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
+```
 
 ## Codex Usage settings
 
@@ -88,21 +92,13 @@ The widget shows Linux CPU, memory, root filesystem usage and combined network r
 
 ## Subscription Usage settings
 
-`plugins/subscription-usage.js` reads `Subscription-Userinfo` headers and records hourly snapshots. It supports up to five independent widget instances, English/Chinese, 7/30-day cumulative charts and observed daily increases. The widget reads saved data every five minutes; opening the page does not fetch subscriptions.
+Requires a Genkan build with `verifyTLS` support and a subscription service that returns `Subscription-Userinfo`. Supports up to five subscriptions, sampled hourly, with English/Chinese cards and 7/30-day charts.
 
-**Host requirement:** Genkan must support `ConfigField.verifyTLS` and expose `genkan.capabilities.verifyTLS === true`. Older hosts show an upgrade message and make no requests. Deploy the corresponding host change with this plugin; it never falls back to unverified TLS.
+- **Allowed origin:** In plugin settings, enter the HTTPS scheme, host and optional port only, without a path or token.
+- **Subscription URL:** In each widget, select that origin and paste the full private URL into the secret field. Use the final HTTPS URL; certificates are verified and redirects are refused.
+- **Chart options:** Choose a display name, 7/30-day range and time zone (default `Asia/Shanghai`). Changing the URL or time zone starts a new history.
 
-In plugin settings, fill one of **Allowed origin 1–5** with an HTTPS origin (scheme, host and optional port only). Do not include credentials, paths, queries or fragments. In each widget, select that origin and put the full private subscription URL in the **secret** Subscription URL field. Its origin must match. Select a display name, 7/30-day range and IANA time zone (default `Asia/Shanghai`). Changing the URL, including a token rotation, or the time zone starts a new history. Only the first five instances in ID order are sampled; additional widgets show a limit message.
-
-All configured origins use strict certificate verification, with no bookmark permissions or wildcard network access. Requests use `User-Agent: clash.meta`: HEAD first, then one GET if HEAD is unsupported or lacks usable counters. The GET body is canceled without reading node configurations. Redirects are refused: use the final HTTPS endpoint. Authentication failures and rate limits are not immediately retried. One failed subscription does not stop the others.
-
-Used bytes are `upload + download`; missing or invalid counters do not produce a sample. Missing quota is unknown; `total=0` means unlimited. Missing/zero expiration is unknown. Overages, expiry and stale data are indicated. A failed refresh preserves the last successful snapshot and its time; data is also marked stale after two hours without a successful sample.
-
-The cumulative chart represents reported counter snapshots, split at decreases, failed observations or gaps over 90 minutes, showing at most the latest three segments. Daily bars sum only consecutive, non-reset observations within the same local date. Intervals crossing midnight, gaps and reset intervals are excluded, never interpolated or allocated across dates. Dates marked `*` are partial observations; dates with no observed interval are omitted, not filled with zero. The latest observed day shows covered hours and interval count. **These are not precise billing totals, and history before installation cannot be recovered.**
-
-History is isolated by widget ID. URLs are never used as keys or stored in history; only a SHA-256 source identity and numeric state are saved. Retention is seven days of hourly detail and 30 days of daily summaries, capped at 40 KiB per instance and 200 KiB across five instances. Deleted or over-limit instance history is cleaned up on the next schedule. Sampling pauses while Genkan or the plugin is stopped. Visitors with page access can see usage cards; configure guest access accordingly.
-
-Run `npm test` for offline tests. `npm run test:host` also verifies the plugin inside the sibling `../genkan` checkout using a Go overlay, without writing tests into that checkout. For another host location use `node tests/run-host-tests.mjs /path/to/genkan`. Host integration uses temporary loopback HTTPS services and test certificates, with no real subscription credentials or Genkan token.
+Failed updates retain the last reading and mark it stale. Daily increases cover only observed intervals; gaps and counter resets are excluded, so these are not billing totals. History starts after setup, and sampling pauses while Genkan or the plugin is stopped.
 
 ## Add a plugin
 
@@ -113,3 +109,5 @@ Run tests with Node.js 22 or later:
 ```bash
 npm test
 ```
+
+For Subscription Usage integration tests against a sibling `../genkan` checkout, run `npm run test:host`.
