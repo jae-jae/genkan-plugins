@@ -14,7 +14,7 @@
 | [比特币价格](plugins/bitcoin-price.js) | 显示比特币的美元或人民币价格、24 小时涨跌幅和更新时间，支持中英文，每 5 分钟刷新。 |
 | [股票走势](plugins/stock-trend.js) | 显示指数或个股行情、日涨跌和最近一天／一个月／一年的走势图，默认纳斯达克综合指数，支持中英文，每 5 分钟刷新。 |
 | [SSH 服务器](plugins/ssh-server.js) | 原生 SSH 采集 Linux 的 CPU、内存、根分区、网络速率与趋势，每 30 秒刷新；需要支持 SSH 的新版 Genkan。 |
-| [机场订阅用量](plugins/subscription-usage.js) | 每小时记录订阅快照，展示 7／30 天趋势与每日可观测增量。 |
+| [机场订阅](plugins/airport-subscription.js) | 实时显示机场订阅剩余流量、今日用量、可切换的 7 天／30 天／累计走势图、重置倒计时与日均可用额度。 |
 
 ## 安装
 
@@ -46,10 +46,10 @@ SSH 服务器的安装地址（需要支持原生 SSH 的 Genkan 版本）：
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-机场订阅用量的安装地址（需要支持私密地址网络授权及后台采样的 Genkan）：
+机场订阅的安装地址（需要支持私密地址网络授权及后台采样的 Genkan）：
 
 ```text
-https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/airport-subscription.js
 ```
 
 ## Codex 用量设置
@@ -90,16 +90,16 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscripti
 
 小组件显示 Linux 的 CPU、内存、根分区用量和网络总速率，不统计容器配额或其他挂载点；网桥和虚拟网卡可能导致网络流量重复计数。页面轮询时采集数据，第二次采样起显示 CPU 趋势，最多保留 30 分钟内的 60 个采样。连接失败时可显示 5 分钟内的缓存并标注采样时间；认证失败时直接显示错误。
 
-## 机场订阅用量设置
+## 机场订阅设置
 
-需要支持私密地址网络授权及后台采样的 Genkan，以及返回 `Subscription-Userinfo` 响应头的订阅服务。每个订阅每小时采样，提供中英文卡片和 7／30 天图表，插件不额外限制小组件数量。
+需要支持私密地址网络授权及后台小组件调度的 Genkan，兼容 Clash、Mihomo、V2Board、Xboard、SSPanel、Sub-Store 等返回 `Subscription-Userinfo` 响应头的订阅服务。
 
-- **订阅地址：** 填写完整 HTTP(S) 订阅链接，以 secret 保存，无需另填授权来源。HTTPS 不校验证书，不跟随重定向。
-- **图表选项：** 可设置显示名、7／30 天范围和时区，默认 `Asia/Shanghai`。修改订阅地址或时区会重新建立历史。
+- **订阅地址：** 填写完整 HTTP(S) 订阅链接，以私密凭据保存。添加小组件后立即拉取实时数据，并在后台每 30 分钟自动采样；支持同源重定向，拒绝跨域跳转。
+- **显示名称：** 选填，留空时自动从响应头 `Profile-Title` 或 `Content-Disposition` 识别机场名称。
+- **每月重置日：** 选填（`1–31`），设置后（或由订阅头提供时）自动计算距下次流量重置天数及剩余周期内的日均可用流量。
+- **默认图表与时区：** 可选近 7 天每日用量、近 30 天每日用量或累计流量走势（管理员也可直接在卡片上点击按钮切换图表或一键刷新），默认时区为 `Asia/Shanghai`。
 
-更新失败时保留旧读数并标记。每日增量只统计有效观测区间，排除采样缺口和计数重置，不能作为精确账单。历史从配置后开始记录。仍受宿主实例、运行时间和存储限制：队列繁忙时延后采样，共享存储不足时缩短历史保留范围。
-
-更新宿主和插件后，已有订阅链接可继续使用，旧授权来源配置自动忽略；订阅地址和时区不变即可保留历史。
+流量单位按二进制换算（`1 GB = 1024³ 字节`），与 Clash／Mihomo 客户端保持一致。接口刷新失败时保留上次读数并以暖色提示；流量即将耗尽或临近到期时卡片也会自动高亮提醒。
 
 ## 添加插件
 
@@ -111,4 +111,4 @@ https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscripti
 npm test
 ```
 
-机场订阅用量的宿主集成测试可运行 `npm run test:host`，默认使用同级 `../genkan` checkout。
+机场订阅的宿主集成测试可运行 `npm run test:host`，默认使用同级 `../genkan` checkout。

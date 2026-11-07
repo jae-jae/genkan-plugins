@@ -4,6 +4,6 @@
     "plugins/bitcoin-price.js",
     "plugins/stock-trend.js",
     "plugins/ssh-server.js",
-    "plugins/subscription-usage.js"
+    "plugins/airport-subscription.js"
   ]
 }

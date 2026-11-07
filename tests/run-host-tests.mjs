@@ -6,14 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const host = resolve(process.argv[2] || join(root, '../genkan'));
-const temp = mkdtempSync(join(tmpdir(), 'genkan-subscription-test-'));
+const temp = mkdtempSync(join(tmpdir(), 'genkan-airport-sub-test-'));
 try {
     const overlay = join(temp, 'overlay.json');
     writeFileSync(overlay, JSON.stringify({ Replace: {
-            [join(host, 'internal/plugin/subscription_external_test.go')]: join(root, 'tests/host/subscription_test.go'),
+            [join(host, 'internal/plugin/airport_subscription_external_test.go')]: join(root, 'tests/host/airport_subscription_test.go'),
         } }));
-    const result = spawnSync('go', ['test', '-overlay', overlay, './internal/plugin', '-run', '^TestSubscriptionUsageRuntime', '-count=1', '-v'], {
-        cwd: host, stdio: 'inherit', env: { ...process.env, SUBSCRIPTION_PLUGIN_SOURCE: join(root, 'plugins/subscription-usage.js') },
+    const result = spawnSync('go', ['test', '-overlay', overlay, './internal/plugin', '-run', '^TestAirportSubscriptionRuntime', '-count=1', '-v'], {
+        cwd: host, stdio: 'inherit', env: { ...process.env, AIRPORT_SUB_PLUGIN_SOURCE: join(root, 'plugins/airport-subscription.js') },
     });
     if (result.error)
         throw result.error;

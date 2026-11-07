@@ -14,7 +14,7 @@ A collection of plugins for [Genkan](https://github.com/jae-jae/genkan).
 | [Bitcoin Price](plugins/bitcoin-price.js) | Shows the Bitcoin price in USD or CNY, 24-hour change and update time. Supports English and Chinese; refreshes every 5 minutes. |
 | [Stock Trend](plugins/stock-trend.js) | Shows index or stock quotes, daily changes and a price chart for the past day, month or year. Defaults to the Nasdaq Composite; supports English and Chinese; refreshes every 5 minutes. |
 | [SSH Server](plugins/ssh-server.js) | Native SSH metrics for Linux: CPU, memory, root disk, network rates and history, refreshed every 30 seconds. Requires a Genkan build with SSH support. |
-| [Subscription Usage](plugins/subscription-usage.js) | Hourly subscription snapshots, 7/30-day trends and observed daily increases. |
+| [Airport Subscription](plugins/airport-subscription.js) | Real-time proxy subscription quota, today's usage, interactive 7D / 30D / Trend charts, monthly reset countdown and daily available budget. |
 
 ## Install
 
@@ -46,10 +46,10 @@ SSH Server installation URL (requires a Genkan build with native SSH support):
 https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/ssh-server.js
 ```
 
-Subscription Usage installation URL (requires a Genkan build with private URL fetch support):
+Airport Subscription installation URL (requires a Genkan build with private URL fetch support):
 
 ```text
-https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/subscription-usage.js
+https://raw.githubusercontent.com/jae-jae/genkan-plugins/main/plugins/airport-subscription.js
 ```
 
 ## Codex Usage settings
@@ -90,16 +90,16 @@ The plugin requests SSH resource-collection permission, with no HTTP or bookmark
 
 The widget shows Linux CPU, memory, root filesystem usage and combined network rates. Container quotas and other mount points are not covered; bridge and virtual interfaces may cause network traffic to be counted more than once. CPU history starts with the second sample and keeps up to 60 samples over 30 minutes while the page polls the widget. Connection failures can show saved readings for up to five minutes, marked with their sample time; authentication failures show an error instead.
 
-## Subscription Usage settings
+## Airport Subscription settings
 
-Requires Genkan support for private URL fetch and background sampling. The subscription service must return `Subscription-Userinfo`. Each subscription is sampled hourly, with English/Chinese cards and 7/30-day charts. There is no plugin-specific widget count limit.
+Requires Genkan support for private URL fetch and background widget scheduling. Works with Clash, Mihomo, V2Board, Xboard, SSPanel, Sub-Store and other proxy subscription endpoints that return `Subscription-Userinfo`.
 
-- **Subscription URL:** Paste the full HTTP(S) subscription link into the secret field. No separate origin is needed. HTTPS certificates are not verified; redirects are refused.
-- **Chart options:** Choose a display name, 7/30-day range and time zone (default `Asia/Shanghai`). Changing the URL or time zone starts a new history.
+- **Subscription URL:** Paste the full HTTP(S) subscription link into the secret field. Data loads immediately when the widget is added and continues sampling every 30 minutes in the background. Same-origin redirects are followed; cross-domain redirects are refused.
+- **Display name:** Optional. Leave blank to automatically detect the provider name from `Profile-Title` or `Content-Disposition`.
+- **Monthly reset day:** Optional (`1–31`). When set (or provided by the server), calculates the countdown to the next traffic reset and your daily available traffic budget.
+- **Default chart & time zone:** Choose `7D` daily bars, `30D` daily bars or `Trend` line chart (administrators can also switch views and trigger an immediate sync directly on the card), and set an IANA time zone (default `Asia/Shanghai`).
 
-Failed updates retain the last reading and mark it stale. Daily increases cover only observed intervals; gaps and counter resets are excluded, so these are not billing totals. History starts after setup. Host instance, runtime and storage limits still apply: a busy queue delays sampling, and shared storage pressure shortens retained history.
-
-Existing subscription URLs keep working after updating the host and plugin. Old origin settings are ignored; unchanged URLs and time zones retain their history.
+Traffic units use binary multiples (`1 GB = 1024³ bytes`), matching Clash and Mihomo clients. Upstream errors preserve the last reading with a warning tint; cards also highlight automatically when quota runs high or expiration approaches.
 
 ## Add a plugin
 
@@ -111,4 +111,4 @@ Run tests with Node.js 22 or later:
 npm test
 ```
 
-For Subscription Usage integration tests against a sibling `../genkan` checkout, run `npm run test:host`.
+For Airport Subscription host integration tests against a sibling `../genkan` checkout, run `npm run test:host`.
